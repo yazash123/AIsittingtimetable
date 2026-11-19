@@ -743,7 +743,7 @@ var Edit=(function(){
     var nd=t.closest('[data-tx]');if(nd){e.preventDefault();e.stopPropagation();open(nd);}else if(!t.closest('input,select,textarea'))close();},true);
   ta.addEventListener('keydown',function(e){if(e.key==='Escape'){e.preventDefault();close();}else if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();commit(false);}});
   $('#cxSave').addEventListener('click',function(){commit(false);});$('#cxCancel').addEventListener('click',close);$('#cxReset').addEventListener('click',function(){commit(true);});
-  return {sync:function(){var can=S.mode==='local'||S.canEdit;btn.hidden=!can;if(!can&&on)mode(false);}};
+  return {sync:function(){var can=(S.mode==='local'&&!window.TIMETABLE_BACKEND)||S.canEdit;btn.hidden=!can;if(!can&&on)mode(false);}};
 })();
 
 readHash();
