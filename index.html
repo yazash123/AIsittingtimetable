@@ -746,6 +746,7 @@ var Edit=(function(){
   return {sync:function(){var can=(S.mode==='local'&&!window.TIMETABLE_BACKEND)||S.canEdit;btn.hidden=!can;if(!can&&on)mode(false);}};
 })();
 
+window.addEventListener('message',function(e){if(e.data==='tt-ping'&&e.source)e.source.postMessage({tt:1,mode:S.mode,be:!!window.TIMETABLE_BACKEND,fb:!!window.firebase,canEdit:S.canEdit,edit:!$('#edBtn').hidden},'*');});
 readHash();
 var v0=S.view;S.view='ov';renderOv();renderTabs();
 if(v0!=='ov')go(v0==='dv'?S.day:v0,null,v0==='dv'?S.open:undefined);
