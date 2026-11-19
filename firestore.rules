@@ -1,0 +1,234 @@
+rules_version = '2';
+// Firebase project "session-5-activity", from Session 8 (3 Nov) onwards.
+// Paste the whole file into Firebase console → Firestore Database → Rules → Publish.
+//
+// Session 8's collections (s8-...) and the sitting's (sit-..., including the timetable's sit-fac) are open. Sessions 5–7 (subs, ice-s6, ice-s7, drv-s6, drv-s7,
+// miss-s6, miss-s7, poll-s6) are now closed to the public: their data stays in the database and in the
+// console, but the old pages can no longer read or change it.
+//
+// Members don't sign in, so their writes are checked for shape, size and timing.
+// The host signs in (Firebase Authentication → Email/Password, user host@houseofthepeople.uk) and only the
+// host can change the session's settings, hide added items, or clear votes.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isHost() {
+      return request.auth != null
+        && request.auth.token.email == 'host@houseofthepeople.uk'
+        && request.auth.token.firebase.sign_in_provider == 'password';
+    }
+    function shortStr(v, max) { return v is string && v.size() <= max; }
+    function nowMs() { return request.time.toMillis(); }
+    // a time from the member's own clock, within a day of Google's (clocks are often a few minutes out)
+    function recent(t) { return t is int && t > nowMs() - 86400000 && t < nowMs() + 86400000; }
+    // members can only list everyone's votes and picks once the host shows the results
+    function resultsShown() {
+      return get(/databases/$(database)/documents/s8-config/main).data.get('showResults', false) == true;
+    }
+
+    // The host's settings: which vote is open, timers, whether results show. One document.
+    match /s8-config/{id} {
+      allow read: if true;
+      allow write: if isHost() && id == 'main'
+        && request.resource.data.keys().hasOnly(['set', 'phase', 'endsAt', 'addOpen', 'pickPhase',
+             'pickEnds', 'showResults', 'stamp', 'paper']);
+    }
+
+    // One document per pairwise choice. Never edited. A member can take back a choice for 15 minutes
+    // ("Undo my last choice"); after that only the host can clear it.
+    match /s8-votes/{id} {
+      allow get: if true;
+      allow list: if isHost() || resultsShown();
+      allow create: if id.size() <= 40
+        && request.resource.data.keys().hasOnly(['set', 'a', 'b', 'w', 'r', 'by', 'name', 'room', 'at'])
+        && request.resource.data.keys().hasAll(['set', 'a', 'b', 'w', 'by', 'name', 'room', 'at'])
+        && request.resource.data['set'] in ['drivers', 'risks']
+        && shortStr(request.resource.data.a, 40) && shortStr(request.resource.data.b, 40)
+        && request.resource.data.a != request.resource.data.b
+        && (request.resource.data.w == null
+            || request.resource.data.w == request.resource.data.a
+            || request.resource.data.w == request.resource.data.b)
+        && (!('r' in request.resource.data) || shortStr(request.resource.data.r, 60))
+        && shortStr(request.resource.data.by, 40) && request.resource.data.by.size() >= 1
+        && shortStr(request.resource.data.name, 60)
+        && request.resource.data.room is int && request.resource.data.room >= 0 && request.resource.data.room <= 30
+        && recent(request.resource.data.at);
+      allow update: if false;
+      allow delete: if isHost() || resource.data.at > nowMs() - 900000;
+    }
+
+    // Each member's five risks. The document id is the member's browser id; sending again replaces it.
+    match /s8-picks/{pid} {
+      allow get: if true;
+      allow list: if isHost() || resultsShown();
+      allow create, update: if pid.size() >= 2 && pid.size() <= 40
+        && request.resource.data.keys().hasOnly(['ids', 'name', 'room', 'at'])
+        && request.resource.data.keys().hasAll(['ids', 'at'])
+        && request.resource.data.ids is list && request.resource.data.ids.size() <= 5
+        && request.resource.data.ids.hasOnly(['N01', 'N02', 'N03', 'N04', 'N05', 'N06', 'N07', 'N08', 'N09', 'N10', 'N11', 'N12', 'N13', 'N14', 'R01', 'R02', 'R03', 'R05', 'R06', 'R07', 'R08', 'R09', 'R10', 'R11', 'R12', 'R14', 'R15'])
+        && (!('name' in request.resource.data) || shortStr(request.resource.data.name, 60))
+        && (!('room' in request.resource.data) || (request.resource.data.room is int
+             && request.resource.data.room >= 0 && request.resource.data.room <= 30))
+        && recent(request.resource.data.at);
+      allow delete: if isHost();
+    }
+
+    // Drivers members add during the vote. Anyone can add; only the host can hide, show or remove one.
+    match /s8-ideas/{id} {
+      allow read: if true;
+      allow create: if id.size() <= 40
+        && request.resource.data.keys().hasOnly(['id', 'set', 't', 's', 'by', 'at', 'hidden'])
+        && request.resource.data.keys().hasAll(['id', 'set', 't', 's', 'by', 'at', 'hidden'])
+        && request.resource.data.id == id
+        && request.resource.data['set'] in ['drivers', 'risks']
+        && shortStr(request.resource.data.t, 120) && request.resource.data.t.size() >= 1
+        && shortStr(request.resource.data.s, 240)
+        && shortStr(request.resource.data.by, 40)
+        && recent(request.resource.data.at)
+        && request.resource.data.hidden == false;
+      allow update: if isHost()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['hidden'])
+        && request.resource.data.hidden is bool;
+      allow delete: if isHost();
+    }
+
+    // ============================================================
+    // The sitting: proposals (homework from 12 Nov, then Manchester, 27–29 Nov). Collections start sit-.
+    // A member's browser signs in anonymously (Authentication → Sign-in method → Anonymous must be on).
+    // A host signs in as host@houseofthepeople.uk with the host passcode, as for Session 8.
+    // ============================================================
+    function sitIn()   { return request.auth != null; }
+    function sitHost() { return request.auth != null
+                           && request.auth.token.email == 'host@houseofthepeople.uk'
+                           && request.auth.token.firebase.sign_in_provider == 'password'; }
+    function sitRisks()   { return ['N01', 'N02', 'N03', 'N04', 'N05', 'N06', 'N07', 'N08', 'N09', 'N10', 'N11', 'N12', 'N13', 'N14', 'R01', 'R02', 'R03', 'R05', 'R06', 'R07', 'R08', 'R09', 'R10', 'R11', 'R12', 'R14', 'R15']; }
+    function sitDrivers() { return ['D1', 'D2', 'D3', 'D4', 'D5', 'D6', 'D7']; }
+    function sitAuthor(id) { return /databases/$(database)/documents/sit-authors/$(id); }
+    function sitKey(k) { return /databases/$(database)/documents/sit-roster/$(k); }
+    // Proposals are open unless a host has closed them.
+    function sitOpen() { return !exists(/databases/$(database)/documents/sit-config/main)
+                           || get(/databases/$(database)/documents/sit-config/main).data.get('open', true) != false; }
+    // A member id made from a typed name starts with u. A login's member id starts with m.
+    function sitTyped(d) { return !('m' in d) || d.m.matches('^u[0-9a-z]*$'); }
+    // A password opens one entry on the scrambled list. An entry that belongs to a member can only sign that member's
+    // own id and name. An entry with no member (the password that works for everyone) can only sign a typed name.
+    function sitSigned(d) {
+      let r = get(sitKey(d.mk)).data;
+      return ( ('m' in r) && ('m' in d) && d.m == r.m && d.name == r.get('name', d.name) )
+          || ( !('m' in r) && sitTyped(d) );
+    }
+    function sitProposalOk(d, id) {
+      return d.keys().hasOnly(['id','text','why','risks','drivers','at','upd','st','src','on','who','by','alt','whoX'])
+        && d.id == id && id.matches('^[a-z0-9]{6,24}$')
+        && d.text is string && d.text.size() >= 3 && d.text.size() <= 300
+        && d.why is string && d.why.size() <= 700
+        && d.risks is list && d.risks.size() <= 27 && d.risks.hasOnly(sitRisks())
+        && d.drivers is list && d.drivers.size() <= 7 && d.drivers.hasOnly(sitDrivers())
+        && d.at is number && d.upd is number
+        && d.st in ['live','gone'] && (d.src == 'web' || (d.src == 'paper' && sitHost()))
+        && (!('on' in d) || (d.on is string && d.on.size() <= 20))
+        && (!('who' in d) || d.who in ['gov','parl','reg','co','emp','cou','pub','world','house','other'])
+        && (!('whoX' in d) || (d.whoX is string && d.whoX.size() <= 40 && d.who == 'other'))
+        && (!('by' in d) || d.by in ['now','year','elec','y2030'])
+        && (!('alt' in d) || (d.alt == true && 'on' in d));
+    }
+
+    // Settings: open or closed, whether members see the whole wall, whether names are checked.
+    match /sit-config/{doc} {
+      allow read: if sitIn();
+      allow write: if sitHost();
+    }
+
+    // The members' list, scrambled. A browser can ask "is this one scrambled name on the list?"
+    // but nobody can read the list, and the names themselves are never stored here.
+    match /sit-roster/{key} {
+      allow get: if sitIn();
+      allow list: if false;
+      allow write: if sitHost();
+    }
+
+    // Who wrote each proposal. Hosts read these; a member can read only their own.
+    // A name is accepted when it is on the list, or marked 'unchecked' for hosts to check by hand.
+    // To refuse names that are not on the list, delete the line marked (soft check) and the || that starts the next line.
+    // Logins. Hosts keep the plain list of names and passwords here, so they can read one out or change it. Members never read it.
+    match /sit-members/{m} {
+      allow read, write: if sitHost();
+    }
+
+    // A member's own list of their proposals, kept under a long secret that only their sign-in reveals,
+    // so the same member sees it on a second device. Nobody can list these.
+    match /sit-mine/{s} {
+      allow get: if sitIn() && s.size() >= 20;
+      allow list: if false;
+      allow create, update: if sitIn() && s.size() >= 20 && s.size() <= 40
+        && request.resource.data.keys().hasOnly(['ids','at'])
+        && request.resource.data.at is number
+        && request.resource.data.ids is list && request.resource.data.ids.size() <= 200;
+      allow delete: if sitHost();
+    }
+
+    match /sit-authors/{id} {
+      allow read: if sitHost() || (sitIn() && resource.data.uid == request.auth.uid);
+      allow create: if sitIn()
+        && request.resource.data.keys().hasOnly(['id','uid','name','mk','at','m'])
+        && (!('m' in request.resource.data) || (request.resource.data.m is string && request.resource.data.m.size() <= 24))
+        && request.resource.data.id == id && id.matches('^[a-z0-9]{6,24}$')
+        && request.resource.data.name is string && request.resource.data.name.size() >= 2 && request.resource.data.name.size() <= 80
+        && request.resource.data.mk is string && request.resource.data.mk.size() <= 64
+        && request.resource.data.at is number
+        && ( sitHost()
+             || ( request.resource.data.uid == request.auth.uid
+                  && ( ( request.resource.data.mk == 'unchecked' && sitTyped(request.resource.data) )   // (soft check)
+                       || ( request.resource.data.mk.matches('^[0-9a-z]{8,64}$')
+                            && request.resource.data.mk != 'unchecked'
+                            && exists(sitKey(request.resource.data.mk))
+                            && sitSigned(request.resource.data) ) ) ) );
+      allow update, delete: if sitHost();
+    }
+
+    // The proposals. Any member can read them (the wall). A proposal is saved together with its author record;
+    // after that only the browser that sent it, or a host, can change it or take it down, and a member only while proposals are open.
+    // Nothing is ever deleted by members.
+    match /sit-proposals/{id} {
+      allow read: if sitIn();
+      allow create: if sitIn() && sitProposalOk(request.resource.data, id)
+        && request.resource.data.at > request.time.toMillis() - 86400000 && request.resource.data.at < request.time.toMillis() + 86400000
+        && existsAfter(sitAuthor(id))
+        && ( sitHost() || getAfter(sitAuthor(id)).data.uid == request.auth.uid )
+        && ( sitHost() || !exists(/databases/$(database)/documents/sit-config/main)
+                       || get(/databases/$(database)/documents/sit-config/main).data.get('open', true) != false );
+      allow update: if sitIn() && sitProposalOk(request.resource.data, id)
+        && request.resource.data.at == resource.data.at
+        && ( sitHost() || ( get(sitAuthor(id)).data.uid == request.auth.uid && sitOpen() ) );
+      allow delete: if sitHost();
+    }
+
+    // Wording changed with the Edit text button: one record per piece of text. Members read them; only a host can change them.
+    match /sit-copy/{key} {
+      allow read: if sitIn();
+      allow write: if sitHost()
+        && (request.method == 'delete' || (request.resource.data.keys().hasOnly(['k','v','at'])
+            && request.resource.data.k is string && request.resource.data.k.size() <= 60
+            && request.resource.data.v is string && request.resource.data.v.size() <= 1200));
+    }
+
+    // What the hosts have brought together: 'live' is what members see, 'draft' is the hosts' working copy.
+    match /sit-integration/live  { allow read: if sitIn(); allow write: if sitHost(); }
+    match /sit-integration/draft { allow read, write: if sitHost(); }
+
+    // ============================================================
+    // The weekend timetable (houseofthepeople.uk/timetable, 27–29 Nov). Collection sit-fac: three documents,
+    // links (deliberAIde links and session times), who (facilitators' tables and rooms) and copy (Edit text wording).
+    // Facilitators only read and never sign in; only the host can change anything.
+    // ============================================================
+    match /sit-fac/{doc} {
+      allow read: if true;
+      allow write: if sitHost() && doc in ['links', 'who', 'copy'];
+    }
+
+    // Everything else, including Sessions 5–7, is closed.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
