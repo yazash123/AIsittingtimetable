@@ -716,7 +716,7 @@ document.addEventListener('input',function(e){var t=e.target;
 $('#gateForm').addEventListener('submit',function(e){e.preventDefault();var v=$('#gateIn').value,er=$('#gateErr'),n=Date.now();
   if(n<lockUntil){er.textContent='Too many tries. Wait '+Math.ceil((lockUntil-n)/1000)+' seconds.';er.hidden=false;return;}
   if(S.mode==='hosted'&&v){$('#gateErr').hidden=true;window.TIMETABLE_BACKEND.hostSignIn(v).then(function(ok){
-      if(ok){tries=0;$('#gate').hidden=true;S.canEdit=true;S.admin=true;showEdit();Edit.sync();renderLinks();toast('Signed in as a host. Edit text is in the corner.');}
+      if(ok){tries=0;$('#gate').hidden=true;S.canEdit=true;S.admin=true;showEdit();Edit.sync();renderLinks();toast('Signed in as a host.');}
       else{er.textContent='That isn’t it.';er.hidden=false;$('#gateIn').value='';}});return;}
   if(v&&hashStr(v)===ADMIN_HASH){tries=0;$('#gate').hidden=true;S.admin=true;try{sessionStorage.setItem(LS+'-adm','1');}catch(x){}showEdit();renderLinks();return;}
   tries++;$('#gateIn').value='';if(tries>=5){tries=0;lockUntil=n+30000;er.textContent='Too many tries. Wait 30 seconds.';}else er.textContent=v?'That isn’t it.':'Enter the password.';er.hidden=false;});
@@ -743,7 +743,7 @@ var Edit=(function(){
     var nd=t.closest('[data-tx]');if(nd){e.preventDefault();e.stopPropagation();open(nd);}else if(!t.closest('input,select,textarea'))close();},true);
   ta.addEventListener('keydown',function(e){if(e.key==='Escape'){e.preventDefault();close();}else if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();commit(false);}});
   $('#cxSave').addEventListener('click',function(){commit(false);});$('#cxCancel').addEventListener('click',close);$('#cxReset').addEventListener('click',function(){commit(true);});
-  return {sync:function(){var can=(S.mode==='local'&&!window.TIMETABLE_BACKEND)||S.canEdit;btn.hidden=!can;if(!can&&on)mode(false);}};
+  return {sync:function(){var can=!window.TIMETABLE_BACKEND&&(S.mode==='local'||S.canEdit); /* the website copy has no Edit text: wording is changed in the Claude copy */btn.hidden=!can;if(!can&&on)mode(false);}};
 })();
 
 window.addEventListener('message',function(e){if(e.data==='tt-ping'&&e.source)e.source.postMessage({tt:1,mode:S.mode,be:!!window.TIMETABLE_BACKEND,fb:!!window.firebase,canEdit:S.canEdit,edit:!$('#edBtn').hidden},'*');});
