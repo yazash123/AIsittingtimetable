@@ -1,0 +1,8 @@
+// Add this block inside `match /databases/{database}/documents { ... }` in the session-5-activity
+// project's Firestore rules (Firebase console → Firestore Database → Rules), alongside the proposals rules. Then Publish.
+// Anyone can read the timetable's links, wording and who's-where; only the host account can change them.
+match /sit-fac/{doc} {
+  allow read: if true;
+  allow write: if request.auth != null && request.auth.token.email == 'host@houseofthepeople.uk'
+               && doc in ['links', 'who', 'copy'];
+}

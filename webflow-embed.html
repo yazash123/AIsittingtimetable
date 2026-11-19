@@ -1,0 +1,19 @@
+<!-- The AI sitting: the weekend timetable. Paste into ONE Webflow Code Embed, in a full-width section (not a Container). -->
+<div id="hotp-tt-wrap" style="width:100%;margin:0;padding:0">
+  <iframe id="hotp-tt"
+    title="The weekend: timetable, sessions and links"
+    data-src="https://yazash123.github.io/aisittingtimetable/"
+    allow="clipboard-write"
+    style="display:block;width:100%;height:100vh;height:100dvh;border:0;background:#5878A0"></iframe>
+</div>
+<script>
+(function(){
+  var f=document.getElementById('hotp-tt'), base=f.getAttribute('data-src');
+  // Links: #fri, #sat, #sun open a day; #links the deliberAIde links.
+  function pass(){
+    var h=/^#(fri|sat|sun|links)$/.test(location.hash)?location.hash:'';
+    if(f.getAttribute('src')!==base+h) f.setAttribute('src',base+h);
+  }
+  pass(); window.addEventListener('hashchange',pass);
+})();
+</script>
