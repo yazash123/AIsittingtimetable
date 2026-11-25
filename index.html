@@ -652,7 +652,7 @@ function renderDay(keepScroll){
   var nl='';if(ld&&ld.d===d)nl='<div class="nowline" id="nowline"><b>now '+ld.hm+'</b></div>';
   $('#dv').innerHTML='<div class="day"><aside class="side"><div class="side-in"><div class="dbox"><h2>'+d.name+'</h2>'+X('d.'+d.id+'.what',d.what,'p','what')+
     '<label class="fac">'+C('facL')+' <input id="fname" placeholder="type your name" value="'+esc(ME.name)+'" autocomplete="name"></label>'+
-    '<label class="fac">'+C('tabL')+' <input id="ftab" placeholder="e.g. 3A" value="'+esc(ME.table)+'" autocomplete="off" autocapitalize="characters" spellcheck="false"></label></div>'+
+    '<label class="fac">'+C('tabL')+' <input id="ftab" placeholder="e.g. A3" value="'+esc(ME.table)+'" autocomplete="off" autocapitalize="characters" spellcheck="false"></label></div>'+
     '<div id="nowbox">'+nowHTML()+'</div>'+
     '<div class="dkey">'+X('c.keyL',COPY.keyL,'p','lab')+'<div class="key">'+keyHTML()+FDK+'</div></div>'+
     '</div></aside>'+
