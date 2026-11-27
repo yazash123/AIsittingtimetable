@@ -474,8 +474,8 @@ var DAYS=[
 ];
 var CLUSTERS=['The bodies meant to check','People at work','Everyone with data','Children and learners','Voters and the public','Civilians in conflict'];
 var KEY=[['y','whole House'],['p','your home table'],['o','a cluster room'],['b','a break']];
-/* the room for each cluster (25 Nov): People at work moves to the Engine Hall on Saturday only */
-var ROOMS_DEF={'A':'Coal Store','B':'Engine Hall','C':'Learning Studio','D':'Engine Hall','E':'Riverside Room','F':'Archive'},ROOMS_DAY={'E.sat':'Engine Hall'};
+/* the room for each cluster (27 Nov: Voters and the public and Children and learners swapped): People at work moves to the Engine Hall on Saturday only */
+var ROOMS_DEF={'A':'Coal Store','B':'Engine Hall','C':'Learning Studio','D':'Archive','E':'Riverside Room','F':'Engine Hall'},ROOMS_DAY={'E.sat':'Engine Hall'};
 var DAYBY={},ACT={};
 DAYS.forEach(function(d){DAYBY[d.id]=d;d.acts=d.rows.map(function(r,i){var a={id:r[0],day:d,t:r[1],k:r[2],title:r[3],sub:r[4],brk:r[2]==='b'||r[5]==='m'||/^(close|end)$/.test(r[3]),mk:r[5]==='m'};
   a.e=i+1<d.rows.length?d.rows[i+1][1]:d.end;if(a.e<=a.t)a.e=d.end;ACT[a.id]=a;return a;});});
@@ -923,11 +923,11 @@ const CL=[
   risks:['Anyone can strip away AI’s safety controls','Our data used to predict and control our lives','AI taking our data without consent or anything in return','AI exposing our data or using it against us later']},
  {k:'C',name:'Civilians in conflict',col:'red',t:{C1:7},room:{fri:'learning',sat:'learning',sun:'learning'},
   risks:['AI choosing who gets targeted in war','AI making wars faster and harder to control','AI lowering barriers to weapons of mass destruction','Countries depending on AI they do not control','Attacks on, or failures of, essential services']},
- {k:'D',name:'Voters and the public',col:'purple',t:{D1:7,D2:7,D3:6},room:{fri:'engine',sat:'engine',sun:'engine'},
+ {k:'D',name:'Voters and the public',col:'purple',t:{D1:7,D2:7,D3:6},room:{fri:'archive',sat:'archive',sun:'archive'},
   risks:['AI content flooding democratic processes','Governments using AI to watch and silence people','AI used on us with no way to opt out','AI used to manipulate people for power and profit']},
  {k:'E',name:'People at work',col:'orange',t:{E1:6,E2:6},room:{fri:'riverside',sat:'engine',sun:'riverside'},
   risks:['AI companies, and AI itself, too big to regulate','AI replacing people’s jobs','People treated unfairly when AI is used to decide','An AI money bubble']},
- {k:'F',name:'Children and learners',col:'pink',t:{F1:7,F2:6},room:{fri:'archive',sat:'archive',sun:'archive'},
+ {k:'F',name:'Children and learners',col:'pink',t:{F1:7,F2:6},room:{fri:'engine',sat:'engine',sun:'engine'},
   risks:['AI giving wrong answers with confidence','A wider gap between those who have AI and those who don’t','Young people relying on AI instead of each other','Scams and fraud made easier by AI','Losing our judgement and ability to think for ourselves']}
 ];
 const byK={};CL.forEach(c=>{byK[c.k]=c;});
@@ -984,7 +984,7 @@ const PLAN={
   Object.assign({k:'lift-r',kind:'core',label:'Lift'},LIFT_R)
  ]
 };
-const SLOTS={coal:[[280,150],[280,198],[280,246]],learning:[[75,450]],riverside:[[790,265],[860,265]],archive:[[790,250],[860,250]]};
+const SLOTS={coal:[[280,150],[280,198],[280,246]],learning:[[75,450]],riverside:[[790,265],[860,265]],archive:[[760,250],[825,250],[890,250]]};
 
 const FS={day:'fri',sel:null,tab:null},MKX={};
 try{const td=new Date().toISOString().slice(0,10),m=FDAYS.find(d=>d.date===td);if(m)FS.day=m.id;}catch(e){}
