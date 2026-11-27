@@ -474,8 +474,8 @@ var DAYS=[
 ];
 var CLUSTERS=['The bodies meant to check','People at work','Everyone with data','Children and learners','Voters and the public','Civilians in conflict'];
 var KEY=[['y','whole House'],['p','your home table'],['o','a cluster room'],['b','a break']];
-/* the room for each cluster (27 Nov: Voters and the public and Children and learners swapped): People at work moves to the Engine Hall on Saturday only */
-var ROOMS_DEF={'A':'Coal Store','B':'Engine Hall','C':'Learning Studio','D':'Archive','E':'Riverside Room','F':'Engine Hall'},ROOMS_DAY={'E.sat':'Engine Hall'};
+/* the room for each cluster (27 Nov: Voters and the public and Children and learners swapped): on Saturday People at work moves to the Learning Studio and Civilians in conflict to the Engine Hall (27 Nov) */
+var ROOMS_DEF={'A':'Coal Store','B':'Engine Hall','C':'Learning Studio','D':'Archive','E':'Riverside Room','F':'Engine Hall'},ROOMS_DAY={'E.sat':'Learning Studio','C.sat':'Engine Hall'};
 var DAYBY={},ACT={};
 DAYS.forEach(function(d){DAYBY[d.id]=d;d.acts=d.rows.map(function(r,i){var a={id:r[0],day:d,t:r[1],k:r[2],title:r[3],sub:r[4],brk:r[2]==='b'||r[5]==='m'||/^(close|end)$/.test(r[3]),mk:r[5]==='m'};
   a.e=i+1<d.rows.length?d.rows[i+1][1]:d.end;if(a.e<=a.t)a.e=d.end;ACT[a.id]=a;return a;});});
@@ -533,7 +533,7 @@ function tableFor(a,row){ /* the table this facilitator is at for an activity: h
   return ME.table;}
 function roomFor(a,t){var cl=a.k==='o'||/^(sat-wrong|sun-final)$/.test(a.id);
   if(!cl)return 'Engine Hall';t=normT(t);if(/^BA/.test(t))return 'Wherever the hosts need you';var m=t.match(/^([A-F])\d/),c=m?m[1]:'';
-  var rs=S.who.rooms||{};return (c&&(rs[c+'.'+a.day.id]||rs[c]||ROOMS_DAY[c+'.'+a.day.id]||ROOMS_DEF[c]))||'Room to be confirmed';}
+  var rs=S.who.rooms||{};return (c&&(rs[c+'.'+a.day.id]||ROOMS_DAY[c+'.'+a.day.id]||rs[c]||ROOMS_DEF[c]))||'Room to be confirmed';}
 
 /* ---------- now, in Manchester ---------- */
 var FAKE=null; (function(){var m=location.hash.match(/t=(\d{4}-\d\d-\d\dT\d\d:\d\d)/);if(m)FAKE=m[1];})();
@@ -738,7 +738,7 @@ function adminHTML(){
     h+='<p class="muted" style="margin-bottom:10px">Each facilitator’s home group (H01 to H12, or BA1 / BA2 for the spares) and their cluster table each day. Leave Saturday or Sunday blank if it’s the same as the day before. Tables can be typed as A2 or a 2, home groups as 1 or H01. The page uses this to tell a facilitator where to be, once they go live.</p>';
     h+='<div class="tw who"><table><thead><tr><th>Facilitator</th><th>Home group</th><th>Friday cluster table</th><th>Saturday</th><th>Sunday</th><th></th></tr></thead><tbody>'+fac.map(function(r,i){return '<tr>'+['name','home','fri','sat','sun'].map(function(f){return '<td><input data-who="'+i+'" data-f="'+f+'" value="'+esc(r[f]||'')+'"></td>';}).join('')+'<td><button type="button" class="btn sm" data-whodel="'+i+'">Remove</button></td></tr>';}).join('')+'</tbody></table></div>';
     h+='<div class="dl-row" style="margin:10px 0 22px"><button type="button" class="btn sm" id="whoAdd">Add a facilitator</button></div>';
-    h+='<h4>Rooms for each cluster</h4><p class="muted" style="margin-bottom:10px">A cluster table’s letter says its cluster (A2 is cluster A). People at work is in the Engine Hall on Saturday whatever this says, unless a host types a room for it.</p><div class="times">'+['A','B','C','D','E','F'].map(function(c){return '<div class="trow"><span>Cluster '+c+'</span><input data-room="'+c+'" value="'+esc((S.who.rooms||{})[c]||ROOMS_DEF[c])+'" style="grid-column:span 2"></div>';}).join('')+'</div>';
+    h+='<h4>Rooms for each cluster</h4><p class="muted" style="margin-bottom:10px">A cluster table’s letter says its cluster (A2 is cluster A). On Saturday People at work is in the Learning Studio and Civilians in conflict in the Engine Hall, whatever this says.</p><div class="times">'+['A','B','C','D','E','F'].map(function(c){return '<div class="trow"><span>Cluster '+c+'</span><input data-room="'+c+'" value="'+esc((S.who.rooms||{})[c]||ROOMS_DEF[c])+'" style="grid-column:span 2"></div>';}).join('')+'</div>';
   }else if(S.apane==='times'){
     h+='<p class="muted" style="margin-bottom:12px">The start and end of each deliberAIde session. The page uses them to show the right links for each activity.</p><div class="times">'+DAYS.map(function(d){return '<div><h3>'+d.name+'</h3>'+S.links.times[d.id].map(function(x,i){return '<div class="trow"><span>Session '+(i+1)+'</span><input type="time" data-tday="'+d.id+'" data-ti="'+i+'" data-side="0" value="'+x[0]+'" aria-label="'+d.name+' session '+(i+1)+' start"><input type="time" data-tday="'+d.id+'" data-ti="'+i+'" data-side="1" value="'+x[1]+'" aria-label="'+d.name+' session '+(i+1)+' end"></div>';}).join('')+'</div>';}).join('')+'</div><p class="err" id="terr" hidden></p><div class="dl-row" style="margin-top:12px"><button type="button" class="btn pri" id="saveTimes">Save times</button><button type="button" class="btn" id="resetTimes">Back to the defaults</button></div>';
   }else{
@@ -921,11 +921,11 @@ const CL=[
   risks:['Nobody answers for harm done through AI','AI building AI faster than we can oversee','AI incidents crossing borders without international cooperation','No way to complain or get things put right','AI companies controlling who can check their AI models']},
  {k:'B',name:'Everybody with data',col:'lblue',t:{B1:7,B2:6},room:{fri:'engine',sat:'engine',sun:'engine'},
   risks:['Anyone can strip away AI’s safety controls','Our data used to predict and control our lives','AI taking our data without consent or anything in return','AI exposing our data or using it against us later']},
- {k:'C',name:'Civilians in conflict',col:'red',t:{C1:7},room:{fri:'learning',sat:'learning',sun:'learning'},
+ {k:'C',name:'Civilians in conflict',col:'red',t:{C1:7},room:{fri:'learning',sat:'engine',sun:'learning'},
   risks:['AI choosing who gets targeted in war','AI making wars faster and harder to control','AI lowering barriers to weapons of mass destruction','Countries depending on AI they do not control','Attacks on, or failures of, essential services']},
  {k:'D',name:'Voters and the public',col:'purple',t:{D1:7,D2:7,D3:6},room:{fri:'archive',sat:'archive',sun:'archive'},
   risks:['AI content flooding democratic processes','Governments using AI to watch and silence people','AI used on us with no way to opt out','AI used to manipulate people for power and profit']},
- {k:'E',name:'People at work',col:'orange',t:{E1:6,E2:6},room:{fri:'riverside',sat:'engine',sun:'riverside'},
+ {k:'E',name:'People at work',col:'orange',t:{E1:6,E2:6},room:{fri:'riverside',sat:'learning',sun:'riverside'},
   risks:['AI companies, and AI itself, too big to regulate','AI replacing people’s jobs','People treated unfairly when AI is used to decide','An AI money bubble']},
  {k:'F',name:'Children and learners',col:'pink',t:{F1:7,F2:6},room:{fri:'engine',sat:'engine',sun:'engine'},
   risks:['AI giving wrong answers with confidence','A wider gap between those who have AI and those who don’t','Young people relying on AI instead of each other','Scams and fraud made easier by AI','Losing our judgement and ability to think for ourselves']}
@@ -984,7 +984,7 @@ const PLAN={
   Object.assign({k:'lift-r',kind:'core',label:'Lift'},LIFT_R)
  ]
 };
-const SLOTS={coal:[[280,150],[280,198],[280,246]],learning:[[75,450]],riverside:[[790,265],[860,265]],archive:[[760,250],[825,250],[890,250]]};
+const SLOTS={coal:[[280,150],[280,198],[280,246]],learning:[[75,415],[75,480]],riverside:[[790,265],[860,265]],archive:[[760,250],[825,250],[890,250]]};
 
 const FS={day:'fri',sel:null,tab:null},MKX={};
 try{const td=new Date().toISOString().slice(0,10),m=FDAYS.find(d=>d.date===td);if(m)FS.day=m.id;}catch(e){}
